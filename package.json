@@ -1,0 +1,16 @@
+{
+  "name": "fortnite-competitions-bot",
+  "version": "1.0.0",
+  "description": "Bot Discord qui affiche les compétitions Fortnite officielles (FNCS, Cash Cups, Arena) sur une fenêtre de -7 jours à +7 jours.",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js",
+    "deploy-commands": "node deploy-commands.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.6.1",
+    "node-cron": "^3.0.3"
+  }
+}
