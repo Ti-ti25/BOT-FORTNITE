@@ -30,3 +30,31 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
     console.error(err);
   }
 })();
+const commands = [
+  new SlashCommandBuilder()
+    .setName('competitions')
+    .setDescription('Affiche les compétitions Fortnite officielles des 7 derniers/prochains jours'),
+  new SlashCommandBuilder()
+    .setName('ajouter')
+    .setDescription('Ajouter un tournoi Fortnite (Réservé au créateur)')
+    .addStringOption(option =>
+      option.setName('nom')
+        .setDescription('Nom du tournoi')
+        .setRequired(true))
+    .addStringOption(option =>
+      option.setName('type')
+        .setDescription('Type de tournoi (ex: FNCS, Cash Cup, Duo...)')
+        .setRequired(true))
+    .addStringOption(option =>
+      option.setName('date')
+        .setDescription('Date au format YYYY-MM-DD')
+        .setRequired(true))
+    .addStringOption(option =>
+      option.setName('debut')
+        .setDescription('Heure de début (ex: 18:00)')
+        .setRequired(true))
+    .addStringOption(option =>
+      option.setName('fin')
+        .setDescription('Heure de fin (ex: 20:00)')
+        .setRequired(true)),
+].map((c) => c.toJSON());
