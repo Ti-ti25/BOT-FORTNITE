@@ -14,26 +14,6 @@ const commands = [
   new SlashCommandBuilder()
     .setName('competitions')
     .setDescription('Affiche les compétitions Fortnite officielles des 7 derniers/prochains jours'),
-].map((c) => c.toJSON());
-
-const rest = new REST({ version: '10' }).setToken(TOKEN);
-
-(async () => {
-  try {
-    const route = GUILD_ID
-      ? Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID) // instantané, pour tester
-      : Routes.applicationCommands(CLIENT_ID); // global, peut prendre jusqu'à 1h
-
-    await rest.put(route, { body: commands });
-    console.log(`Commande /competitions déployée (${GUILD_ID ? 'serveur de test' : 'global'}).`);
-  } catch (err) {
-    console.error(err);
-  }
-})();
-const commands = [
-  new SlashCommandBuilder()
-    .setName('competitions')
-    .setDescription('Affiche les compétitions Fortnite officielles des 7 derniers/prochains jours'),
   new SlashCommandBuilder()
     .setName('ajouter')
     .setDescription('Ajouter un tournoi Fortnite (Réservé au créateur)')
@@ -58,3 +38,18 @@ const commands = [
         .setDescription('Heure de fin (ex: 20:00)')
         .setRequired(true)),
 ].map((c) => c.toJSON());
+
+const rest = new REST({ version: '10' }).setToken(TOKEN);
+
+(async () => {
+  try {
+    const route = GUILD_ID
+      ? Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID) // instantané, pour tester
+      : Routes.applicationCommands(CLIENT_ID); // global, peut prendre jusqu'à 1h
+
+    await rest.put(route, { body: commands });
+    console.log(`Commandes /competitions et /ajouter déployées avec succès ! (${GUILD_ID ? 'serveur de test' : 'global'})`);
+  } catch (err) {
+    console.error(err);
+  }
+})();
