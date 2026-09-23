@@ -153,7 +153,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     await interaction.editReply("Une erreur est survenue en récupérant les compétitions.");
   }
 });
-const MON_DISCORD_ID = "TON_ID_DISCORD_ICI"; // Remplace par ton ID Discord
+const MON_DISCORD_ID = "1292831744562696267"; // Remplace par ton ID Discord
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
@@ -173,7 +173,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   // Gestion de la commande /ajouter
   if (interaction.commandName === 'ajouter') {
     // Sécurité : Vérifie si c'est bien ton compte
-    if (interaction.user.id !== 1292831744562696267) {
+    if (interaction.user.id !== MON_DISCORD_ID) {
       return interaction.reply({
         content: "Tu n'as pas la permission d'utiliser cette commande !",
         ephemeral: true
