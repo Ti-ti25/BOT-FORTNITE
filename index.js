@@ -153,5 +153,70 @@ client.on(Events.InteractionCreate, async (interaction) => {
     await interaction.editReply("Une erreur est survenue en récupérant les compétitions.");
   }
 });
+const MON_DISCORD_ID = "TON_ID_DISCORD_ICI"; // Remplace par ton ID Discord
 
+client.on(Events.InteractionCreate, async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+
+  // Gestion de la commande /competitions
+  if (interaction.commandName === 'competitions') {
+    await interaction.deferReply();
+    try {
+      await sendRecap(interaction.channel);
+      await interaction.editReply('Voilà les compétitions en cours ! 🏆');
+    } catch (err) {
+      console.error('Erreur lors de la commande /competitions :', err);
+      await interaction.editReply("Une erreur est survenue en récupérant les compétitions.");
+    }
+  }
+
+  // Gestion de la commande /ajouter
+  if (interaction.commandName === 'ajouter') {
+    // Sécurité : Vérifie si c'est bien ton compte
+    if (interaction.user.id !== 1292831744562696267) {
+      return interaction.reply({
+        content: "Tu n'as pas la permission d'utiliser cette commande !",
+        ephemeral: true
+      });
+    }
+
+    await interaction.deferReply({ ephemeral: true });
+
+    const nom = interaction.options.getString('nom');
+    const type = interaction.options.getString('type');
+    const date = interaction.options.getString('date'); // Format YYYY-MM-DD
+    const debut = interaction.options.getString('debut'); // Format HH:MM
+    const fin = interaction.options.getString('fin');     // Format HH:MM
+
+    try {
+      const startDate = `${date}T${debut}:00Z`;
+      const endDate = `${date}T${fin}:00Z`;
+
+      const newEntry = {
+        id: `tournament-${Date.now()}`,
+        name: nom,
+        type: type,
+        region: "EU",
+        startDate: startDate,
+        endDate: endDate,
+        description: `🎮 **Mode :** Battle Royale\n👥 **Format :** ${type}`
+      };
+
+      // Lecture et mise à jour du fichier tournaments.json
+      let tournaments = [];
+      if (fs.existsSync(TOURNAMENTS_FILE)) {
+        const raw = fs.readFileSync(TOURNAMENTS_FILE, 'utf-8');
+        tournaments = JSON.parse(raw);
+      }
+
+      tournaments.push(newEntry);
+      fs.writeFileSync(TOURNAMENTS_FILE, JSON.stringify(tournaments, null, 2), 'utf-8');
+
+      await interaction.editReply(`✅ Le tournoi **${nom}** a bien été ajouté pour le ${date} de ${debut} à ${fin} !`);
+    } catch (err) {
+      console.error('Erreur lors de l\'ajout du tournoi :', err);
+      await interaction.editReply("❌ Une erreur est survenue lors de l'enregistrement du tournoi.");
+    }
+  }
+});
 client.login(TOKEN);
