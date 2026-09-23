@@ -8,6 +8,7 @@ const TOKEN = process.env.DISCORD_TOKEN;
 const CHANNEL_ID = process.env.CHANNEL_ID;
 const TOURNAMENTS_FILE = path.join(__dirname, 'tournaments.json');
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const MON_DISCORD_ID = "1292831744562696267"; // Ton ID Discord sécurisé pour /ajouter
 
 if (!TOKEN || !CHANNEL_ID) {
   console.error('DISCORD_TOKEN et/ou CHANNEL_ID manquants dans le fichier .env.');
@@ -46,7 +47,7 @@ function loadTournaments() {
 
 function getTournamentsInWindow() {
   const now = Date.now();
-  const windowStart = now; // <-- On commence strictement à maintenant (suppression des 7 jours en arrière)
+  const windowStart = now; // On commence strictement à maintenant
   const windowEnd = now + WEEK_MS;
 
   return loadTournaments()
@@ -65,7 +66,7 @@ function getTournamentsInWindow() {
     .sort((a, b) => a._start - b._start);
 }
 
-// Nouvelle fonction pour un affichage court et lisible
+// Fonction pour un affichage court et lisible de la date
 function formatTournamentDate(startDateStr, endDateStr) {
   const start = new Date(startDateStr);
   const end = endDateStr ? new Date(endDateStr) : start;
@@ -116,7 +117,7 @@ async function sendRecap(channel) {
   const tournaments = getTournamentsInWindow();
 
   if (tournaments.length === 0) {
-    await channel.send('📅 Aucune compétition Fortnite officielle dans les 7 derniers jours ni les 7 prochains jours.');
+    await channel.send('📅 Aucune compétition Fortnite officielle dans les 7 prochains jours.');
     return;
   }
 
@@ -140,21 +141,7 @@ client.once(Events.ClientReady, (c) => {
   });
 });
 
-client.on(Events.InteractionCreate, async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
-  if (interaction.commandName !== 'competitions') return;
-
-  await interaction.deferReply();
-  try {
-    await sendRecap(interaction.channel);
-    await interaction.editReply('Voilà les compétitions en cours ! 🏆');
-  } catch (err) {
-    console.error('Erreur lors de la commande /competitions :', err);
-    await interaction.editReply("Une erreur est survenue en récupérant les compétitions.");
-  }
-});
-const MON_DISCORD_ID = "1292831744562696267"; // Remplace par ton ID Discord
-
+// Gestion unique des interactions (commandes slash)
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -184,9 +171,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     const nom = interaction.options.getString('nom');
     const type = interaction.options.getString('type');
-    const date = interaction.options.getString('date'); // Format YYYY-MM-DD
-    const debut = interaction.options.getString('debut'); // Format HH:MM
-    const fin = interaction.options.getString('fin');     // Format HH:MM
+    const date = interaction.options.getString('date'); // Format attendu : YYYY-MM-DD
+    const debut = interaction.options.getString('debut'); // Format attendu : HH:MM
+    const fin = interaction.options.getString('fin');     // Format attendu : HH:MM
 
     try {
       const startDate = `${date}T${debut}:00Z`;
@@ -202,7 +189,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         description: `🎮 **Mode :** Battle Royale\n👥 **Format :** ${type}`
       };
 
-      // Lecture et mise à jour du fichier tournaments.json
+      // Lecture et mise à jour propre du fichier tournaments.json
       let tournaments = [];
       if (fs.existsSync(TOURNAMENTS_FILE)) {
         const raw = fs.readFileSync(TOURNAMENTS_FILE, 'utf-8');
@@ -219,4 +206,5 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   }
 });
+
 client.login(TOKEN);
