@@ -8,7 +8,7 @@ const TOKEN = process.env.DISCORD_TOKEN;
 const CHANNEL_ID = process.env.CHANNEL_ID;
 const TOURNAMENTS_FILE = path.join(__dirname, 'tournaments.json');
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-const MON_DISCORD_ID = "1292831744562696267"; // Ton ID Discord sécurisé pour /ajouter
+const MON_DISCORD_ID = "1292831744562696267"; // Ton ID Discord sécurisé
 
 if (!TOKEN || !CHANNEL_ID) {
   console.error('DISCORD_TOKEN et/ou CHANNEL_ID manquants dans le fichier .env.');
@@ -19,7 +19,7 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 // Couleur d'embed par type de compétition
 const COLORS = {
-  FNCS: 0x8E44AD,       // violet
+  FNCS: 0x8E44AD,        // violet
   'Cash Cup': 0xE8B34D, // or
   Arena: 0x3498DB,      // bleu
   Default: 0x2ECC71,    // vert par défaut
@@ -35,10 +35,24 @@ const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
 
 function loadTournaments() {
   try {
+    if (!fs.existsSync(TOURNAMENTS_FILE)) return [];
     const raw = fs.readFileSync(TOURNAMENTS_FILE, 'utf-8');
-    const parsed = JSON.parse(raw);
+    let parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) throw new Error('tournaments.json doit contenir un tableau.');
-    return parsed;
+
+    // Nettoyage automatique : on supprime les tournois dont la fin est déjà passée
+    const now = Date.now();
+    const activeTournaments = parsed.filter((t) => {
+      const endTime = new Date(t.endDate || t.startDate).getTime();
+      return endTime >= now;
+    });
+
+    // Si des tournois périmés ont été retirés, on met à jour le fichier automatiquement
+    if (activeTournaments.length !== parsed.length) {
+      fs.writeFileSync(TOURNAMENTS_FILE, JSON.stringify(activeTournaments, null, 2), 'utf-8');
+    }
+
+    return activeTournaments;
   } catch (err) {
     console.error('Erreur de lecture de tournaments.json :', err.message);
     return [];
@@ -47,7 +61,7 @@ function loadTournaments() {
 
 function getTournamentsInWindow() {
   const now = Date.now();
-  const windowStart = now; // On commence strictement à maintenant
+  const windowStart = now;
   const windowEnd = now + WEEK_MS;
 
   return loadTournaments()
@@ -66,7 +80,7 @@ function getTournamentsInWindow() {
     .sort((a, b) => a._start - b._start);
 }
 
-// Fonction pour un affichage court et lisible de la date
+// Fonction pour un affichage propre de la date en heure locale française
 function formatTournamentDate(startDateStr, endDateStr) {
   const start = new Date(startDateStr);
   const end = endDateStr ? new Date(endDateStr) : start;
@@ -141,11 +155,11 @@ client.once(Events.ClientReady, (c) => {
   });
 });
 
-// Gestion unique des interactions (commandes slash)
+// Gestion des interactions (commandes slash)
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
-  // Gestion de la commande /competitions
+  // Commande /competitions
   if (interaction.commandName === 'competitions') {
     await interaction.deferReply();
     try {
@@ -157,9 +171,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   }
 
-  // Gestion de la commande /ajouter
+  // Commande /ajouter
   if (interaction.commandName === 'ajouter') {
-    // Sécurité : Vérifie si c'est bien ton compte
     if (interaction.user.id !== MON_DISCORD_ID) {
       return interaction.reply({
         content: "Tu n'as pas la permission d'utiliser cette commande !",
@@ -171,11 +184,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     const nom = interaction.options.getString('nom');
     const type = interaction.options.getString('type');
-    const date = interaction.options.getString('date'); // Format attendu : YYYY-MM-DD
-    const debut = interaction.options.getString('debut'); // Format attendu : HH:MM
-    const fin = interaction.options.getString('fin');     // Format attendu : HH:MM
+    const date = interaction.options.getString('date'); // YYYY-MM-DD
+    const debut = interaction.options.getString('debut'); // HH:MM
+    const fin = interaction.options.getString('fin');     // HH:MM
 
     try {
+      // CORRECTION : Suppression du 'Z' pour éviter le décalage UTC
       const startDate = `${date}T${debut}:00`;
       const endDate = `${date}T${fin}:00`;
 
@@ -189,7 +203,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         description: `🎮 **Mode :** Battle Royale\n👥 **Format :** ${type}`
       };
 
-      // Lecture et mise à jour propre du fichier tournaments.json
       let tournaments = [];
       if (fs.existsSync(TOURNAMENTS_FILE)) {
         const raw = fs.readFileSync(TOURNAMENTS_FILE, 'utf-8');
@@ -203,6 +216,40 @@ client.on(Events.InteractionCreate, async (interaction) => {
     } catch (err) {
       console.error('Erreur lors de l\'ajout du tournoi :', err);
       await interaction.editReply("❌ Une erreur est survenue lors de l'enregistrement du tournoi.");
+    }
+  }
+
+  // Commande /supprimer
+  if (interaction.commandName === 'supprimer') {
+    if (interaction.user.id !== MON_DISCORD_ID) {
+      return interaction.reply({
+        content: "Tu n'as pas la permission d'utiliser cette commande !",
+        ephemeral: true
+      });
+    }
+
+    await interaction.deferReply({ ephemeral: true });
+    const target = interaction.options.getString('id_ou_nom').trim();
+
+    try {
+      let tournaments = loadTournaments();
+      const initialLength = tournaments.length;
+
+      const filteredTournaments = tournaments.filter(t => {
+        const matchId = t.id === target;
+        const matchName = t.name && t.name.toLowerCase().includes(target.toLowerCase());
+        return !(matchId || matchName);
+      });
+
+      if (filteredTournaments.length === initialLength) {
+        return interaction.editReply(`❌ Aucun tournoi trouvé correspondant à "${target}". Vérifie l'ID ou le nom.`);
+      }
+
+      fs.writeFileSync(TOURNAMENTS_FILE, JSON.stringify(filteredTournaments, null, 2), 'utf-8');
+      await interaction.editReply(`✅ Le tournoi correspondant à **"${target}"** a bien été supprimé !`);
+    } catch (err) {
+      console.error('Erreur lors de la suppression du tournoi :', err);
+      await interaction.editReply("❌ Une erreur est survenue lors de la suppression.");
     }
   }
 });
