@@ -18,18 +18,24 @@ L'ancienne version utilisait `fortnite-api.com/v2/news/br`, qui renvoie les **ac
    - `CLIENT_ID` : l'ID de ton application
    - `CHANNEL_ID` : le salon où poster les récaps
    - `GUILD_ID` (optionnel, recommandé pendant les tests) : l'ID de ton serveur
+   - `ADMIN_ID` : ton ID Discord personnel, pour que toi seul puisses utiliser `/ajouter` et `/supprimer`
 3. Déploie la commande slash : `npm run deploy-commands`
 4. Lance le bot : `npm start`
 
 ## Mettre à jour les compétitions
 
-Édite `tournaments.json` (ou colle le JSON généré par l'outil web). Chaque entrée :
+Trois façons, au choix :
+
+1. **Commande Discord `/ajouter`** (réservée à `ADMIN_ID`) : nom, catégorie (menu déroulant FNCS / Cash Cup / Arena / Autre), date, heures de début/fin **en heure de Paris**, format (optionnel), lien (optionnel).
+2. **`python3 ajouter_tournoi.py`** : colle 5 lignes (nom, catégorie, format, date en français type "27 septembre 2026", heures type "18h20h").
+3. **Éditer `tournaments.json` à la main** (ou coller le JSON généré par l'outil web) :
 
 ```json
 {
   "id": "identifiant-unique",
   "name": "Nom affiché",
-  "type": "FNCS",           // "FNCS", "Cash Cup", "Arena" ou autre
+  "type": "FNCS",           // catégorie : "FNCS", "Cash Cup", "Arena" ou "Autre" — sert à la couleur de l'embed
+  "format": "Trio",         // optionnel : Solo, Duo, Trio, Squad...
   "region": "EU",
   "startDate": "2026-09-27T17:00:00Z",  // toujours en UTC (le Z à la fin)
   "endDate": "2026-09-28T22:00:00Z",
@@ -39,7 +45,9 @@ L'ancienne version utilisait `fortnite-api.com/v2/news/br`, qui renvoie les **ac
 }
 ```
 
-Aucun redémarrage nécessaire : le fichier est relu à chaque récap ou commande.
+Pour supprimer un tournoi : `/supprimer` avec son ID ou un morceau de son nom (réservé à `ADMIN_ID`).
+
+Aucun redémarrage nécessaire : le fichier est relu à chaque récap ou commande. Après avoir ajouté `/ajouter` ou `/supprimer`, redéploie les commandes une fois : `npm run deploy-commands`.
 
 ## Fonctionnement
 
@@ -49,4 +57,6 @@ Aucun redémarrage nécessaire : le fichier est relu à chaque récap ou command
 ## Limites à connaître
 
 - Le bot ne va chercher aucune donnée sur Internet : si tu n'actualises pas `tournaments.json`, la liste ne bouge pas.
-- Les horaires du cron dépendent du fuseau horaire du serveur qui exécute le bot (souvent UTC sur un hébergeur). Ajuste `'0 18 * * 0'` dans `index.js` si besoin.
+- Le cron du récap automatique est fixé sur le fuseau `Europe/Paris` (dimanche 18h heure de Paris, peu importe où le bot est hébergé).
+- `/ajouter` et `ajouter_tournoi.py` te demandent toujours l'heure **de Paris** ; la conversion en UTC (avec gestion automatique de l'heure d'été/hiver) est faite par le code via `luxon` (JS) / `zoneinfo` (Python).
+- Les tournois dont la fin remonte à plus de 7 jours sont automatiquement retirés de `tournaments.json` à chaque lecture (pour ne pas accumuler indéfiniment), mais ils restent visibles pendant ces 7 jours dans le récap.
