@@ -176,8 +176,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const fin = interaction.options.getString('fin');     // Format attendu : HH:MM
 
     try {
-      const startDate = `${date}T${debut}:00Z`;
-      const endDate = `${date}T${fin}:00Z`;
+      const startDate = `${date}T${debut}:00`;
+      const endDate = `${date}T${fin}:00`;
 
       const newEntry = {
         id: `tournament-${Date.now()}`,
