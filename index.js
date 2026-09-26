@@ -281,17 +281,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    await interaction.deferReply({ ephemeral: true });
-    try {
-      const result = await syncFromLiquipedia();
-      await interaction.editReply(
-        `✅ Synchro terminée : ${result.added} tournoi(s) EU récupéré(s) depuis Liquipedia, ${result.kept} entrée(s) manuelle(s) conservée(s). ` +
-        `Ça peut prendre plusieurs minutes à cause des quotas de l'API Liquipedia — c'est normal.`,
-      );
-    } catch (err) {
-      console.error('Erreur lors de la synchro Liquipedia :', err);
-      await interaction.editReply('❌ La synchro a échoué. Vérifie les logs du bot pour le détail.');
-    }
+    await interaction.reply({
+      content: '🔄 Synchro Liquipedia lancée en arrière-plan. Ça peut prendre plusieurs minutes (quota de l\'API) — je poste le résultat ici dès que c\'est fini, même si Discord affiche cette commande comme terminée avant.',
+      ephemeral: true,
+    });
+
+    const channel = interaction.channel;
+    syncFromLiquipedia()
+      .then((result) => {
+        channel.send(`✅ Synchro Liquipedia terminée : ${result.added} tournoi(s) EU récupéré(s), ${result.kept} entrée(s) manuelle(s) conservée(s).`);
+      })
+      .catch((err) => {
+        console.error('Erreur lors de la synchro Liquipedia :', err);
+        channel.send(`❌ La synchro Liquipedia a échoué : ${err.message}`);
+      });
   }
 });
 

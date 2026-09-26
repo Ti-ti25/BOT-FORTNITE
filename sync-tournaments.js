@@ -4,24 +4,27 @@ const path = require('path');
 const { DateTime } = require('luxon');
 
 const TOURNAMENTS_FILE = path.join(__dirname, 'tournaments.json');
-const USER_AGENT = process.env.LIQUIPEDIA_USER_AGENT;
 const API_BASE = 'https://liquipedia.net/fortnite/api.php';
 const SOURCE_TAG = 'liquipedia-auto';
 
-if (!USER_AGENT || USER_AGENT.includes('TonProjet')) {
-  console.error(
-    "LIQUIPEDIA_USER_AGENT manquant ou pas personnalisé dans .env.\n" +
-    "Liquipedia impose un User-Agent identifiant ton projet + un contact (obligatoire, sinon blocage).\n" +
-    "Exemple : LIQUIPEDIA_USER_AGENT=\"MonBotFortnite/1.0 (discord: tonpseudo)\"",
-  );
-  process.exit(1);
+function getUserAgentOrThrow() {
+  const userAgent = process.env.LIQUIPEDIA_USER_AGENT;
+  if (!userAgent || userAgent.includes('TonProjet')) {
+    throw new Error(
+      "LIQUIPEDIA_USER_AGENT manquant ou pas personnalisé dans .env. " +
+      "Liquipedia impose un User-Agent identifiant ton projet + un contact (obligatoire, sinon blocage). " +
+      "Exemple : LIQUIPEDIA_USER_AGENT=\"MonBotFortnite/1.0 (discord: tonpseudo)\"",
+    );
+  }
+  return userAgent;
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function liquipediaFetch(params, { isParse = false } = {}) {
+  const userAgent = getUserAgentOrThrow();
   const url = `${API_BASE}?${new URLSearchParams({ ...params, format: 'json' }).toString()}`;
-  const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
+  const res = await fetch(url, { headers: { 'User-Agent': userAgent } });
   if (!res.ok) throw new Error(`Liquipedia a répondu ${res.status} pour ${url}`);
   const data = await res.json();
   // Respect des quotas de l'API : 1 requête/2s en général, 1 requête "parse"/30s
@@ -117,6 +120,8 @@ async function fetchTournamentDetails(title) {
   };
 }
 
+const MAX_TOURNAMENTS_PER_SYNC = 20; // Avec 30s/tournoi, ça borne la durée à ~10 min
+
 async function sync() {
   console.log('Récupération des tournois à venir (catégorie "Upcoming Tournaments")...');
   const upcoming = await getCategoryMembers('Upcoming_Tournaments');
@@ -124,12 +129,18 @@ async function sync() {
   const european = await getCategoryMembers('European_Tournaments');
 
   const europeanSet = new Set(european);
-  const targets = upcoming.filter((title) => europeanSet.has(title));
+  let targets = upcoming.filter((title) => europeanSet.has(title));
 
-  console.log(`${targets.length} tournoi(s) EU à venir trouvé(s) sur Liquipedia. Récupération des détails (peut prendre du temps, quota API oblige)...`);
+  if (targets.length > MAX_TOURNAMENTS_PER_SYNC) {
+    console.warn(`${targets.length} tournois EU trouvés, on plafonne à ${MAX_TOURNAMENTS_PER_SYNC} pour cette synchro (les suivants seront pris la prochaine fois).`);
+    targets = targets.slice(0, MAX_TOURNAMENTS_PER_SYNC);
+  }
+
+  console.log(`${targets.length} tournoi(s) à traiter, ~30s chacun (quota Liquipedia) : ça va prendre environ ${Math.ceil((targets.length * 30) / 60)} minute(s).`);
 
   const fetched = [];
-  for (const title of targets) {
+  for (const [index, title] of targets.entries()) {
+    console.log(`(${index + 1}/${targets.length}) Récupération de "${title}"...`);
     try {
       const entry = await fetchTournamentDetails(title);
       if (entry) fetched.push(entry);
