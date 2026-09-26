@@ -47,6 +47,10 @@ const commands = [
     .setDescription('Supprimer un tournoi par ID ou par nom (réservé à l\'administrateur)')
     .addStringOption((option) =>
       option.setName('id_ou_nom').setDescription('ID exact ou morceau du nom du tournoi').setRequired(true)),
+
+  new SlashCommandBuilder()
+    .setName('sync')
+    .setDescription('Resynchroniser les tournois EU depuis Liquipedia (réservé à l\'administrateur)'),
 ].map((c) => c.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);

@@ -6,7 +6,20 @@ Ton ancien token a été partagé en clair, il faut le régénérer :
 Discord Developer Portal → ton application → **Bot** → **Reset Token**.
 Ne remets plus jamais un token dans un fichier de code : il va dans `.env`, qui n'est jamais partagé ni commité (déjà dans `.gitignore`).
 
-## Pourquoi ce bot est différent de la version précédente
+## Synchronisation automatique (Liquipedia)
+
+Le bot peut aller chercher lui-même les tournois EU à venir sur [Liquipedia](https://liquipedia.net/fortnite) (wiki esport communautaire, données propres et fiables — contrairement au site officiel dont la région affichée dépend de la géolocalisation IP, voir plus bas).
+
+- **Automatique** : tous les jours à 9h00 (heure de Paris), avant le récap du dimanche.
+- **À la demande** : `/sync` (réservé à `ADMIN_ID`). Ça peut prendre plusieurs minutes — c'est normal, Liquipedia impose un quota de 1 requête "parse" toutes les 30 secondes, qu'on respecte scrupuleusement pour ne pas se faire bannir.
+- Les tournois récupérés via Liquipedia sont marqués `"source": "liquipedia-auto"` dans `tournaments.json` et remplacés à chaque synchro. Tes ajouts manuels (`/ajouter`, `ajouter_tournoi.py`, ou édition directe sans ce champ) ne sont jamais touchés.
+- **Obligatoire** : `LIQUIPEDIA_USER_AGENT` dans `.env`, avec un vrai moyen de te contacter (Liquipedia l'exige dans ses conditions d'utilisation, sinon ils peuvent bloquer l'accès). Exemple : `LIQUIPEDIA_USER_AGENT="MonBotFortnite/1.0 (discord: tonpseudo)"`.
+- Les données Liquipedia sont sous licence CC-BY-SA : le bot crédite systématiquement la source dans la description et le lien de l'embed. Ne retire pas cette mention.
+- Limite connue : Liquipedia donne des **dates**, rarement des heures précises. Les tournois auto-synchronisés sont donc traités comme des évènements "journée entière" — vérifie l'heure exacte sur fortnite.com/competitive ou dans le jeu avant de t'organiser dessus.
+
+## Pourquoi pas le site officiel fortnite.com/competitive directement ?
+
+
 
 L'ancienne version utilisait `fortnite-api.com/v2/news/br`, qui renvoie les **actualités du jeu** (skins, modes de jeu...), pas les compétitions. Il n'existe pas d'API publique et documentée pour les tournois officiels Epic (FNCS, Cash Cups, Arena) avec des dates structurées. Ce bot lit donc les compétitions depuis un fichier local, `tournaments.json`, que tu tiens à jour toi-même (idéalement avec l'outil web fourni à côté, pour éviter d'éditer le JSON à la main).
 
@@ -18,7 +31,8 @@ L'ancienne version utilisait `fortnite-api.com/v2/news/br`, qui renvoie les **ac
    - `CLIENT_ID` : l'ID de ton application
    - `CHANNEL_ID` : le salon où poster les récaps
    - `GUILD_ID` (optionnel, recommandé pendant les tests) : l'ID de ton serveur
-   - `ADMIN_ID` : ton ID Discord personnel, pour que toi seul puisses utiliser `/ajouter` et `/supprimer`
+   - `ADMIN_ID` : ton ID Discord personnel, pour que toi seul puisses utiliser `/ajouter`, `/supprimer` et `/sync`
+   - `LIQUIPEDIA_USER_AGENT` : identifie ton projet pour l'API Liquipedia (voir section synchro plus bas)
 3. Déploie la commande slash : `npm run deploy-commands`
 4. Lance le bot : `npm start`
 

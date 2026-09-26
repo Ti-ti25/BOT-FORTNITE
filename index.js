@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const cron = require('node-cron');
 const { DateTime } = require('luxon');
+const { sync: syncFromLiquipedia } = require('./sync-tournaments');
 const { Client, GatewayIntentBits, EmbedBuilder, Events } = require('discord.js');
 
 const TOKEN = process.env.DISCORD_TOKEN;
@@ -163,6 +164,16 @@ client.once(Events.ClientReady, (c) => {
       console.error('Erreur lors du récap automatique :', err);
     }
   }, { timezone: PARIS_ZONE });
+
+  // Synchro Liquipedia tous les jours à 9h00, heure de Paris (avant le récap du dimanche)
+  cron.schedule('0 9 * * *', async () => {
+    console.log('Synchro Liquipedia quotidienne...');
+    try {
+      await syncFromLiquipedia();
+    } catch (err) {
+      console.error('Erreur lors de la synchro Liquipedia :', err);
+    }
+  }, { timezone: PARIS_ZONE });
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -260,6 +271,26 @@ client.on(Events.InteractionCreate, async (interaction) => {
     } catch (err) {
       console.error('Erreur lors de la suppression du tournoi :', err);
       await interaction.editReply('❌ Une erreur est survenue lors de la suppression.');
+    }
+    return;
+  }
+
+  if (interaction.commandName === 'sync') {
+    if (interaction.user.id !== ADMIN_ID) {
+      await interaction.reply({ content: "Tu n'as pas la permission d'utiliser cette commande !", ephemeral: true });
+      return;
+    }
+
+    await interaction.deferReply({ ephemeral: true });
+    try {
+      const result = await syncFromLiquipedia();
+      await interaction.editReply(
+        `✅ Synchro terminée : ${result.added} tournoi(s) EU récupéré(s) depuis Liquipedia, ${result.kept} entrée(s) manuelle(s) conservée(s). ` +
+        `Ça peut prendre plusieurs minutes à cause des quotas de l'API Liquipedia — c'est normal.`,
+      );
+    } catch (err) {
+      console.error('Erreur lors de la synchro Liquipedia :', err);
+      await interaction.editReply('❌ La synchro a échoué. Vérifie les logs du bot pour le détail.');
     }
   }
 });
